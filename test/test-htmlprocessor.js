@@ -99,6 +99,35 @@ describe('htmlprocessor', function () {
     assert.equal('main', hp.blocks[0].requirejs.name);
   });
 
+  it('should detect all custom data attributes', function() {
+    var htmlcontent = '<!-- build:js scripts/script.js -->\n' +
+    '<script data-foo="bar" src="scripts/vendor/require.js" data-main="main"></script>\n' +
+    '<script src="foo.js" data-bar="baz"></script>\n' +
+    '<script src="bar.js"></script>\n' +
+    '<script data-framework-theme="black" src="baz.js" data-thing="hello"></script>\n' +
+    '<!-- endbuild -->';
+    var hp = new HTMLProcessor('', '', htmlcontent, 3);
+    assert.equal(1, hp.blocks.length);
+    assert.ok(hp.blocks[0].data);
+    assert.equal(4, hp.blocks[0].data.length);
+  });
+
+  it('should throw error if there are duplicated data attributes in one block', function() {
+    var htmlcontent = '<!-- build:js scripts/script.js -->\n' +
+    '<script data-foo="bar" src="scripts/vendor/require.js" data-main="main"></script>\n' +
+    '<script src="foo.js" data-foo="bar"></script>\n' +
+    '<script src="bar.js"></script>\n' +
+    '<script data-framework-theme="black" src="baz.js" data-thing="hello"></script>\n' +
+    '<!-- endbuild -->';
+    try {
+      new HTMLProcessor('', '', htmlcontent, 3);
+    } catch (e) {
+      assert.ok(true);
+      return;
+    }
+    assert.ok(false);
+  });
+
   it('should detect the defer attribute', function () {
     var htmlcontent = '<!-- build:js foo.js -->\n' +
     '<script defer src="bar.js"></script>\n' +
@@ -220,6 +249,28 @@ describe('htmlprocessor', function () {
       var hp = new HTMLProcessor('', '', htmlcontent, 3);
       var replacestring = hp.replaceWith(hp.blocks[0]);
       assert.equal('<script defer src="foo.js"></script>', replacestring);
+    });
+
+    it('should preserve data attribues (JS)', function () {
+      var htmlcontent = '<!-- build:js foo.js -->\n' +
+      '<script src="foo.js" data-foo="bar"></script>\n' +
+      '<script src="bar.js" data-bar="baz"></script>\n' +
+      '<script data-framework-theme="black" src="baz.js" data-thing="hello"></script>\n' +
+      '<!-- endbuild -->';
+      var hp = new HTMLProcessor('', '', htmlcontent, 3);
+      var replacestring = hp.replaceWith(hp.blocks[0]);
+      assert.equal('<script data-foo="bar" data-bar="baz" data-framework-theme="black" data-thing="hello" src="foo.js"></script>', replacestring);
+    });
+
+    it('should preserve data attribues (RequireJS)', function () {
+      var htmlcontent = '<!-- build:js foo -->\n' +
+      '<script data-main="scripts/main" src="scripts/vendor/require.js" data-foo="bar"></script>\n' +
+      '<script src="bar.js" data-bar="baz"></script>\n' +
+      '<script data-framework-theme="black" src="baz.js" data-thing="hello"></script>\n' +
+      '<!-- endbuild -->';
+      var hp = new HTMLProcessor('', '', htmlcontent, 3);
+      var replacestring = hp.replaceWith(hp.blocks[0]);
+      assert.equal('<script data-main="foo" data-foo="bar" data-bar="baz" data-framework-theme="black" data-thing="hello" src="scripts/vendor/require.js"></script>', replacestring);
     });
 
     it('should return a string that will replace the furnished block (RequireJS)', function () {
